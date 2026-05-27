@@ -1,4 +1,3 @@
-# IMPORTACIONES
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from arbol import ArbolBinario
@@ -6,19 +5,44 @@ from arbol import ArbolBinario
 app = Flask(__name__)
 CORS(app)
 
-arbol = None
+arboles_usuarios = {}
+
+
+def obtener_usuario_id(datos=None):
+    if datos:
+        usuario_id = datos.get('usuarioId')
+    else:
+        usuario_id = request.args.get('usuarioId')
+
+    if not usuario_id:
+        return None
+
+    return str(usuario_id)
+
+
+def obtener_arbol_usuario(usuario_id):
+    if usuario_id not in arboles_usuarios:
+        arboles_usuarios[usuario_id] = ArbolBinario()
+
+    return arboles_usuarios[usuario_id]
 
 
 @app.route('/insertar', methods=['POST'])
 def insertar_nodo():
-    global arbol
-
     datos = request.get_json()
 
     if not datos:
         return jsonify({
             'exito': False,
             'mensaje': 'No se recibieron datos'
+        }), 400
+
+    usuario_id = obtener_usuario_id(datos)
+
+    if not usuario_id:
+        return jsonify({
+            'exito': False,
+            'mensaje': 'Falta usuarioId'
         }), 400
 
     valor = datos.get('valor')
@@ -31,8 +55,7 @@ def insertar_nodo():
             'mensaje': 'Debe ingresar un valor para el nodo'
         }), 400
 
-    if arbol is None:
-        arbol = ArbolBinario()
+    arbol = obtener_arbol_usuario(usuario_id)
 
     exito, mensaje = arbol.insertar(valor, lado, padre)
 
@@ -45,9 +68,17 @@ def insertar_nodo():
 
 @app.route('/arbol', methods=['GET'])
 def obtener_arbol():
-    global arbol
+    usuario_id = obtener_usuario_id()
 
-    if arbol is None or arbol.raiz is None:
+    if not usuario_id:
+        return jsonify({
+            'exito': False,
+            'mensaje': 'Falta usuarioId'
+        }), 400
+
+    arbol = obtener_arbol_usuario(usuario_id)
+
+    if arbol.raiz is None:
         return jsonify({
             'arbol': None,
             'mensaje': 'El árbol está vacío'
@@ -60,9 +91,16 @@ def obtener_arbol():
 
 @app.route('/recorridos', methods=['GET'])
 def obtener_recorridos():
-    global arbol
+    usuario_id = obtener_usuario_id()
 
-    if arbol is None or arbol.raiz is None:
+    if not usuario_id:
+        return jsonify({
+            'error': 'Falta usuarioId'
+        }), 400
+
+    arbol = obtener_arbol_usuario(usuario_id)
+
+    if arbol.raiz is None:
         return jsonify({
             'error': 'El árbol está vacío'
         }), 400
@@ -76,13 +114,18 @@ def obtener_recorridos():
 
 @app.route('/reconstruir', methods=['POST'])
 def reconstruir_arbol():
-    global arbol
-
     datos = request.get_json()
 
     if not datos:
         return jsonify({
             'error': 'No se recibieron datos'
+        }), 400
+
+    usuario_id = obtener_usuario_id(datos)
+
+    if not usuario_id:
+        return jsonify({
+            'error': 'Falta usuarioId'
         }), 400
 
     preorden = datos.get('preorden')
@@ -101,6 +144,8 @@ def reconstruir_arbol():
     arbol = ArbolBinario()
     arbol.reconstruir(preorden, inorden)
 
+    arboles_usuarios[usuario_id] = arbol
+
     return jsonify({
         'mensaje': 'Árbol reconstruido exitosamente',
         'arbol': arbol.a_diccionario(arbol.raiz)
@@ -109,9 +154,20 @@ def reconstruir_arbol():
 
 @app.route('/limpiar', methods=['DELETE'])
 def limpiar_arbol():
-    global arbol
+    datos = request.get_json(silent=True) or {}
 
-    arbol = None
+    usuario_id = obtener_usuario_id(datos)
+
+    if not usuario_id:
+        usuario_id = request.args.get('usuarioId')
+
+    if not usuario_id:
+        return jsonify({
+            'exito': False,
+            'mensaje': 'Falta usuarioId'
+        }), 400
+
+    arboles_usuarios.pop(usuario_id, None)
 
     return jsonify({
         'exito': True,
@@ -120,6 +176,5 @@ def limpiar_arbol():
     }), 200
 
 
-# INICIAR EL SERVIDOR
 if __name__ == '__main__':
     app.run(debug=True)

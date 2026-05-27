@@ -15,6 +15,34 @@ class _ConstruirScreenState extends State<ConstruirScreen> {
   String ladoSeleccionado = 'izquierdo';
   String mensaje = '';
   Map<String, dynamic>? arbol;
+  bool cargando = true;
+
+  @override
+  void initState() {
+    super.initState();
+    cargarArbolGuardado();
+  }
+
+  Future<void> cargarArbolGuardado() async {
+    try {
+      final respuesta = await ArbolService.obtenerArbol();
+
+      if (!mounted) return;
+
+      setState(() {
+        arbol = respuesta['arbol'];
+        mensaje = respuesta['mensaje']?.toString() ?? '';
+        cargando = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        mensaje = 'Error al cargar árbol guardado';
+        cargando = false;
+      });
+    }
+  }
 
   Future<void> insertarNodo() async {
     final valor = valorController.text.trim();
@@ -67,6 +95,12 @@ class _ConstruirScreenState extends State<ConstruirScreen> {
   }
 
   Widget mostrarArbol(Map<String, dynamic>? nodo) {
+    if (cargando) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
     if (nodo == null) {
       return const Center(
         child: Text(
@@ -134,7 +168,6 @@ class _ConstruirScreenState extends State<ConstruirScreen> {
                           ),
                         ),
                         const SizedBox(height: 25),
-
                         TextField(
                           controller: valorController,
                           decoration: InputDecoration(
@@ -145,9 +178,7 @@ class _ConstruirScreenState extends State<ConstruirScreen> {
                             prefixIcon: const Icon(Icons.account_tree),
                           ),
                         ),
-
                         const SizedBox(height: 18),
-
                         TextField(
                           controller: padreController,
                           decoration: InputDecoration(
@@ -158,9 +189,7 @@ class _ConstruirScreenState extends State<ConstruirScreen> {
                             prefixIcon: const Icon(Icons.link),
                           ),
                         ),
-
                         const SizedBox(height: 18),
-
                         DropdownButtonFormField<String>(
                           value: ladoSeleccionado,
                           decoration: InputDecoration(
@@ -186,9 +215,7 @@ class _ConstruirScreenState extends State<ConstruirScreen> {
                             });
                           },
                         ),
-
                         const SizedBox(height: 25),
-
                         Wrap(
                           spacing: 15,
                           runSpacing: 15,
@@ -220,9 +247,7 @@ class _ConstruirScreenState extends State<ConstruirScreen> {
                             ),
                           ],
                         ),
-
                         const SizedBox(height: 20),
-
                         Text(
                           mensaje,
                           textAlign: TextAlign.center,
@@ -235,9 +260,7 @@ class _ConstruirScreenState extends State<ConstruirScreen> {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 30),
-
                 Card(
                   elevation: 5,
                   shape: RoundedRectangleBorder(
